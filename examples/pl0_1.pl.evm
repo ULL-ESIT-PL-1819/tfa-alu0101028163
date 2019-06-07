@@ -1,0 +1,1 @@
+"var n, f;\nbegin\n   n := 0;\n   f := 1;\n   while n # 16 do\n   begin\n      n := n + 1;\n      f := f * n;\n   end;\nend.\n"
