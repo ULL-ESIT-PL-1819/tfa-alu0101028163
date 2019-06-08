@@ -1,3 +1,4 @@
+# PRÁCTICA AÚN NO FINALIZADA
 # Parser Predictivo Descendente Recursivo para la gramática PL/0
 
 La gramática a implementar es la que sostiene el lenguaje de programación **PL/0** creado por **Niklaus Wirth** y que tiene la siguiente forma:
@@ -7,7 +8,7 @@ program = block "."
 
  block =
      ["var" ident {"," ident} ";"]
-     {"procedure" ident ";" block ";"} statement
+     {"procedure" ident ";" block ";"} {statement ";"}
 
  assignation =  ident ":=" (expression)
  call = "call" ident
@@ -18,7 +19,7 @@ program = block "."
 
  statement =
        assignation
-     | call
+     | call ["(" [expression {"," expression}] ")"]
      | begin_end
      | if
      | while
@@ -32,7 +33,7 @@ program = block "."
  term = factor {("*"|"/") factor}
 
  factor =
-     ident
+     ident {"[" expression "]"}
      | number
      | "(" expression ")"
      | array
