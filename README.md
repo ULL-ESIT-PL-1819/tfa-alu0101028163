@@ -10,11 +10,11 @@ program = block "."
      ["var" ident {"," ident} ";"]
      {"procedure" ident ";" block ";"} {statement ";"}
 
- assignation =  ident ":=" (expression)
- call = "call" ident
- begin_end = "begin" statement {";" statement } "end"
- if = "if" condition "then" statement "else" statement
- while = "while" condition "do" statement
+ assignation =  ident ("[" expression "]")* ":=" (expression)
+ call = "call" ident "(" [expression (',' expression)*] ")"
+ begin_end = "begin" { statement ";" } "end"
+ if = "if" condition "then" { statement ";" }
+ while = "while" condition "do" { statement ";" }
  print = "print" "(" expression ")"
 
  statement =
