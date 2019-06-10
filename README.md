@@ -12,7 +12,7 @@ program = block "."
      ["var" ident {"," ident} ";"]
      {procedure} {statement}
 
- assignation =  object_access ":=" expression ";"
+ assignation =  object_access ":=" (object_declaration | expression) ";"
  call = "call" object_access "(" [expression (',' expression)*] ")" ";"
  begin_end = "begin" { statement } "end"
  if = "if" condition "then" statement
@@ -23,6 +23,7 @@ program = block "."
  procedure = {"procedure" ident ";" "begin" block "end"}
  class = "class" identifier ["extends" identifier] ";" "begin" { procedure | assignation } "end"
  object_access = ident { "." ident | "[" expression "]"}
+ object_inst = "new" identifier
 
 
  statement =

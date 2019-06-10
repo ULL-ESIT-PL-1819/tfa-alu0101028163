@@ -86,5 +86,29 @@ describe("EXAMPLES", function(){
     chai.expect(console.log.calledOnce).to.be.true;
     chai.expect(console.log.calledWith(20)).to.be.true;
   })
+  
+  it("array_access.pl", function(){
+    var r = parser.parse("examples/array_access.pl");
+    var x = r.evaluate(registry.topEnv);
+    x.should.be.eql([1,[1,2],1])
+    chai.expect(console.log.calledOnce).to.be.true;
+    chai.expect(console.log.calledWith([1,[1,2],1])).to.be.true;
+  })
+  
+  it("object_declaration", function(){
+    var r = parser.parse("examples/object_declaration.pl");
+    var x = r.evaluate(registry.topEnv);
+    x.should.be.eql(4);
+    chai.expect(console.log.calledWith(1)).to.be.true;
+    chai.expect(console.log.calledWith(3)).to.be.true;
+    chai.expect(console.log.calledWith(4)).to.be.true;
+  })
+  
+  it("object_procedure_call", function(){
+    var r = parser.parse("examples/object_procedure_call.pl");
+    var x = r.evaluate(registry.topEnv);
+    x.should.be.eql(199);
+    chai.expect(console.log.calledWith(199)).to.be.true;
+  })
 
 });
