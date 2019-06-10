@@ -7,15 +7,22 @@ La gramática a implementar es la que sostiene el lenguaje de programación **PL
 program = block "."
 
  block =
+     {class}
+     ["const" ident ":=" expression {"," ident ":=" expression} ";"]
      ["var" ident {"," ident} ";"]
-     {"procedure" ident ";" block ";"} {statement ";"}
+     {procedure} {statement}
 
- assignation =  ident ("[" expression "]")* ":=" (expression)
- call = "call" ident "(" [expression (',' expression)*] ")"
- begin_end = "begin" { statement ";" } "end"
- if = "if" condition "then" { statement ";" }
- while = "while" condition "do" { statement ";" }
- print = "print" "(" expression ")"
+ assignation =  ident { "." ident | "[" expression "]"} ":=" expression ";"
+ call = "call" ident { "." ident } "(" [expression (',' expression)*] ")" ";"
+ begin_end = "begin" { statement } "end"
+ if = "if" condition "then" statement
+ while = "while" condition "do" statement
+ print = "print" "(" expression ")" ";"
+ 
+ array = "[" [expression {"," expression}] "]"
+ procedure = {"procedure" ident ";" "begin" block "end"}
+ class = "class" identifier ["extends" identifier] ";" "begin" { procedure | assignation } "end"
+
 
  statement =
        assignation
@@ -33,11 +40,9 @@ program = block "."
  term = factor {("*"|"/") factor}
 
  factor =
-     ident {"[" expression "]"}
+     ident { "." ident | "[" expression "]"}
      | number
      | "(" expression ")"
      | array
-
-  array = "[" [expression {"," expression}] "]"
 
 ```

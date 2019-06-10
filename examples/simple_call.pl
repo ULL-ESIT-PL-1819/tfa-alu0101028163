@@ -1,4 +1,6 @@
 procedure b;
-var a;
-a := 2;
-call b.
+begin
+  var a;
+  a := 2;
+end
+call b();

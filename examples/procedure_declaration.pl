@@ -1,5 +1,8 @@
 var c;
 procedure b;
-var a;
-a := 2;
-c := 4.
+begin
+  var a;
+  a := 2;
+  c := 4;
+end
+call b();
