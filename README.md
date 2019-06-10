@@ -12,8 +12,8 @@ program = block "."
      ["var" ident {"," ident} ";"]
      {procedure} {statement}
 
- assignation =  ident { "." ident | "[" expression "]"} ":=" expression ";"
- call = "call" ident { "." ident } "(" [expression (',' expression)*] ")" ";"
+ assignation =  object_access ":=" expression ";"
+ call = "call" object_access "(" [expression (',' expression)*] ")" ";"
  begin_end = "begin" { statement } "end"
  if = "if" condition "then" statement
  while = "while" condition "do" statement
@@ -22,6 +22,7 @@ program = block "."
  array = "[" [expression {"," expression}] "]"
  procedure = {"procedure" ident ";" "begin" block "end"}
  class = "class" identifier ["extends" identifier] ";" "begin" { procedure | assignation } "end"
+ object_access = ident { "." ident | "[" expression "]"}
 
 
  statement =
@@ -39,8 +40,8 @@ program = block "."
 
  term = factor {("*"|"/") factor}
 
- factor =
-     ident { "." ident | "[" expression "]"}
+ factor = 
+       object_access
      | number
      | "(" expression ")"
      | array
