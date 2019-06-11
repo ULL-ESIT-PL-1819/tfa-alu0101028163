@@ -4,7 +4,7 @@ var chai     = require("chai")
 var sinon    = require("sinon")
 var lexer    = require('../../lib/lexer.js');
 var parser   = require('../../lib/parser.js');
-var ast      = require('../../lib/ast.js');
+const {Value, Word, Apply} = require("../../lib/ast.js");
 var registry = require("../../lib/registry.js")
 const inspect   = require("util").inspect;
 var ins         = (x) => inspect(x, {depth:null});
@@ -93,16 +93,17 @@ describe("EXAMPLES", function(){
     x.should.be.eql([1,[1,2],1])
     chai.expect(console.log.calledOnce).to.be.true;
     chai.expect(console.log.calledWith([1,[1,2],1])).to.be.true;
-  })
+  })  
   
-  it("object_declaration", function(){
-    var r = parser.parse("examples/object_declaration.pl");
+  it("object_access", function(){
+    var r = parser.parse("examples/object_access.pl");
     var x = r.evaluate(registry.topEnv);
     x.should.be.eql(4);
     chai.expect(console.log.calledWith(1)).to.be.true;
     chai.expect(console.log.calledWith(3)).to.be.true;
     chai.expect(console.log.calledWith(4)).to.be.true;
   })
+  
   
   it("object_procedure_call", function(){
     var r = parser.parse("examples/object_procedure_call.pl");

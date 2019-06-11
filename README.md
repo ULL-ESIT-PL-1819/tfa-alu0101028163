@@ -21,9 +21,10 @@ program = block "."
  
  array = "[" [expression {"," expression}] "]"
  procedure = {"procedure" ident ";" "begin" block "end"}
- class = "class" identifier ["extends" identifier] ";" "begin" { procedure | assignation } "end"
+ object_declaration = "object" identifier ["extends" identifier] ";" "begin" { procedure | assignation } "end"
  object_access = ident { "." ident | "[" expression "]"}
- object_inst = "new" identifier
+
+ object_declaration = "object" ["extends" identifier] "begin" { procedure | assignation } "end"
 
 
  statement =
