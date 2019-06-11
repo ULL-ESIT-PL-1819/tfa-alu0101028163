@@ -1,5 +1,5 @@
 var c;
-procedure b;
+procedure b();
 begin
   var a;
   a := 2;

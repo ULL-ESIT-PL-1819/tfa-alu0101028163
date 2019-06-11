@@ -20,11 +20,10 @@ program = block "."
  print = "print" "(" expression ")" ";"
  
  array = "[" [expression {"," expression}] "]"
- procedure = {"procedure" ident ";" "begin" block "end"}
- object_declaration = "object" identifier ["extends" identifier] ";" "begin" { procedure | assignation } "end"
- object_access = ident { "." ident | "[" expression "]"}
-
+ procedure = {"procedure" ident "(" [expression { "," expression }] ")" ";" "begin" block "end"}
  object_declaration = "object" ["extends" identifier] "begin" { procedure | assignation } "end"
+ object_access = ["this" "."] ident { "." ident | "[" expression "]"}
+
 
 
  statement =

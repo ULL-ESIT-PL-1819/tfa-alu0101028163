@@ -3,10 +3,10 @@ obj := object
           a := 1;
           procedure b();
           begin
-            c := 2;
-            d := 3;
+            print(this.a);
           end
-          e := 3;
-          f := [1,3,[4,5]];
         end
         ;
+
+  
+call obj.b();

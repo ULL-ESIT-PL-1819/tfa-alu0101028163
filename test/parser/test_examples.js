@@ -36,6 +36,14 @@ describe("EXAMPLES", function(){
     var x = r.evaluate(registry.topEnv)
     x.should.be.eql(4)
   })
+  
+  it("procedure_with_args.pl", function(){
+    var r = parser.parse("examples/procedure_with_args.pl");
+    var x = r.evaluate(registry.topEnv)
+    x.should.be.eql(80);
+    chai.expect(console.log.calledWith(20)).to.be.true;
+    chai.expect(console.log.calledWith(80)).to.be.true;
+  })
 
   it("simple_call.pl", function(){
     var r = parser.parse("examples/simple_call.pl");
@@ -76,14 +84,12 @@ describe("EXAMPLES", function(){
   it("print_number.pl", function(){
     var r = parser.parse("examples/print_number.pl");
     var x = r.evaluate(registry.topEnv);
-    chai.expect(console.log.calledOnce).to.be.true;
     chai.expect(console.log.calledWith(6)).to.be.true;
   })
 
   it("print_var.pl", function(){
     var r = parser.parse("examples/print_var.pl");
     var x = r.evaluate(registry.topEnv);
-    chai.expect(console.log.calledOnce).to.be.true;
     chai.expect(console.log.calledWith(20)).to.be.true;
   })
   
@@ -91,7 +97,6 @@ describe("EXAMPLES", function(){
     var r = parser.parse("examples/array_access.pl");
     var x = r.evaluate(registry.topEnv);
     x.should.be.eql([1,[1,2],1])
-    chai.expect(console.log.calledOnce).to.be.true;
     chai.expect(console.log.calledWith([1,[1,2],1])).to.be.true;
   })  
   
@@ -104,9 +109,22 @@ describe("EXAMPLES", function(){
     chai.expect(console.log.calledWith(4)).to.be.true;
   })
   
+  it("object_inside_access", function(){
+    var r = parser.parse("examples/object_inside_access.pl");
+    var x = r.evaluate(registry.topEnv);
+    x.should.be.eql(1);
+    chai.expect(console.log.calledWith(1)).to.be.true;
+  })
   
   it("object_procedure_call", function(){
     var r = parser.parse("examples/object_procedure_call.pl");
+    var x = r.evaluate(registry.topEnv);
+    x.should.be.eql(199);
+    chai.expect(console.log.calledWith(199)).to.be.true;
+  })
+  
+  it("object_procedure_call_2", function(){
+    var r = parser.parse("examples/object_procedure_call_2.pl");
     var x = r.evaluate(registry.topEnv);
     x.should.be.eql(199);
     chai.expect(console.log.calledWith(199)).to.be.true;

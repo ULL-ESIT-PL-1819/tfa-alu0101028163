@@ -1,7 +1,7 @@
 obj := object
         begin
           a := 1;
-          procedure b;
+          procedure b();
           begin
             c := 2;
             d := 3;

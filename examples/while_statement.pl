@@ -1,4 +1,4 @@
-procedure primes;
+procedure primes();
 begin
   var arg;
   begin

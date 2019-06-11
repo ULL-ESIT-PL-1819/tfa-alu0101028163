@@ -1,9 +1,9 @@
 obj := object
         begin
-          procedure b();
+          procedure b(number);
           begin
-            print(199);
+            print(number);
           end
         end
       ;
-call obj.b();
+call obj.b(199);
