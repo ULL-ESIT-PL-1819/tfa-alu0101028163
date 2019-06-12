@@ -7,7 +7,7 @@ A pesar de estar basado el tfa en PL/0 al igual que la práctica 8, el código q
 
 Todos los ejemplos utilizados a lo largo del informe se hayan en el directorio examples del proyecto.
 
-La estructura que se sigue a lo largo del informe es definir las distintas fases del análisis y sus correspondientes implementaciones, por lo tanto las dudas que surgen en una etapa pueden estar respondidas en otra.
+A lo largo del informe se definen las distintas fases del análisis y sus correspondientes implementaciones, por lo tanto las dudas que surgen en una etapa pueden estar respondidas en otra.
 
 ## Gramática 
 
@@ -910,7 +910,7 @@ function parse_call_stmt(){
 }
 ```
 
-En el **Call** statement quieres en primer lugar obtener el objeto que vas a llamar, que puede ser desde un procedure descrito en el bloque a uno definido como una propiedad de un objeto, de parser el identificador y sus propiedades se encargará la regla **parse_object_access** que devolverá un identificador o múltiples. En caso de que se devuelvan múltiples identificadores el objeto al que se llama será obtenido por medio de un apply de tipo **element**.
+En el **Call** statement quieres en primer lugar obtener el objeto que vas a llamar, que puede ser desde un procedure descrito en el bloque a uno definido como una propiedad de un objeto, de parsear el identificador y sus propiedades se encargará la regla **parse_object_access** que devolverá un identificador o múltiples. En caso de que se devuelvan múltiples identificadores el objeto al que se llama será obtenido por medio de un apply de tipo **element**.
 
 Esto último sería por ejemplo el caso de *object_inside_access.pl* :
 
@@ -1007,7 +1007,7 @@ function parse_object_declaration(){
 ```
 
 
-La declaración de un objeto comienza siempre con la palabra clave **object** y puede ir seguida de **extends** en caso de que este objeto derive de otro, si este es el caso el apply es distinto aunque recibe los mismos argumentos.
+La declaración de un objeto comienza siempre con la palabra clave **object** y puede ir seguida de **extends** en caso de que este objeto derive de otro, si este es el caso el apply es distinto aunque recibe los mismos argumentos más el identificador del objeto padre.
 
 Las propiedades del objeto estarán englobadas dentro de las palabras clave _begin_ y _end_.
 
@@ -1056,7 +1056,7 @@ El acceso a propiedades de objetos se ve caracterizado por el uso del token **do
 
 Asumimos que el primer objeto que precede a todos los demás seguidos de punto es el objeto que llama a las propiedades, sabiendo esto, está la peculiaridad del uso del **this** que puede ser el objeto que llama.
 
-Todos los objetos que preceden al primero pasan a ser automáticamente values, esto es muy importante para el correcto funcionamiento de los métodos element y set.
+Todos los objetos que suceden al primero pasan a ser automáticamente values, esto es muy importante para el correcto funcionamiento de los métodos element y set.
 
 Nótese que esta regla no devuelve un apply sino un array que contiene el objeto al que se accede y sus propiedades ( si las tiene ) es en reglas superiores donde se evalúa que realizar con los valores que retorna.
 
@@ -1349,7 +1349,7 @@ En la función call lo primero que se hace es comprobar si la función que se ll
 en este caso lo que hacemos es definir el **this** que vamos a pasarle como primer argumento a la función como dicho objeto que la llama. En caso de que no sea una propiedad de un Object la función que se está llamando el this será igual a null.
 
 
-Esto implica que el uso del this está limitado al ámbito local de las funciones que llama el propio objeto.
+Esto implica que el uso del this está limitado a las funciones y referencia al objeto que las contiene.
 
 ### object
 
