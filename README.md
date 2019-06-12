@@ -890,8 +890,7 @@ function parse_call_stmt(){
     
     get_token_of_type('lpar');
     const args = [];
-    let expr = La única peculiaridad está en el uso del this como objeto que llama 
-parse_expression();
+    let expr = parse_expression();
     if(expr){
       args.push(expr);
 
