@@ -7,6 +7,8 @@ A pesar de estar basado el tfa en PL/0 al igual que la práctica 8, el código q
 
 Todos los ejemplos utilizados a lo largo del informe se hayan en el directorio examples del proyecto.
 
+La estructura que se sigue a lo largo del informe es definir las distintas fases del análisis y sus correspondientes implementaciones, por lo tanto las dudas que surgen en una etapa pueden estar respondidas en otra.
+
 ## Gramática 
 
 La gramática a implementar está fundamentada en la del lenguaje de programación **PL/0** creada por **Niklaus Wirth** y ha sido modificada para adaptarse a un enfoque personal. La **gramática original** tiene la forma:
@@ -1054,6 +1056,8 @@ El acceso a propiedades de objetos se ve caracterizado por el uso del token **do
 
 Asumimos que el primer objeto que precede a todos los demás seguidos de punto es el objeto que llama a las propiedades, sabiendo esto, está la peculiaridad del uso del **this** que puede ser el objeto que llama.
 
+Todos los objetos que preceden al primero pasan a ser automáticamente values, esto es muy importante para el correcto funcionamiento de los métodos element y set.
+
 Nótese que esta regla no devuelve un apply sino un array que contiene el objeto al que se accede y sus propiedades ( si las tiene ) es en reglas superiores donde se evalúa que realizar con los valores que retorna.
 
 Ejemplo *object_inside_access_2.pl* :
@@ -1211,4 +1215,211 @@ function parse_factor(){
 
 }
 ```
+
+## Egg Virtual Machine
+
+La máquina virtual de Egg también ha sufrido una serie de modificaciones para ampliar su funcionalidad, algunas de ellas requeridas en prácticas posteriores que o bien no son idénticas o nunca fueron implementadas pero se necesitaron para este proyecto.
+
+
+### element
+
+```javascript
+topEnv["[]"] = topEnv["element"] = topEnv["<-"] = function(calling_object, ...args) {
+  
+    if(args.length < 1){
+	   throw SyntaxError("Expected at least 2 arguments");
+  }
+  
+  let result = calling_object;
+  for(let i = 0; i < args.length; i++){
+  	result = result[args[i]];
+  }
+
+  return result;
+  
+};
+```
+
+La función element tiene como objetivo obtener una propiedad de un objeto, ya sea por ejemplo el atributo de un Object o el elemento en una posición concreta de un array.
+
+El primer argumento representa el objeto en sí del cual se obtiene la propiedad y lo que se hace es ir iterando hasta llegar a la propiedad deseada y finalmente retornarla.
+
+
+### set
+
+```javascript
+specialForms["set"] = specialForms["="] = function(args, env) {
+  if (args.length < 3 || !args[0].type === 'Word') {
+    throw new SyntaxError('Bad use of set');
+  }
+  
+  
+  obj = args[0].value;
+  indexes = args.slice(1, args.length - 1);
+  value = args[args.length - 1].evaluate(env);
+
+  
+  for (let scope = env; scope; scope = Object.getPrototypeOf(scope)) {
+    if (Object.prototype.hasOwnProperty.call(scope, args[0].value)) {
+
+      obj = scope[args[0].value];
+      for(var i = 0; i < indexes.length - 1; i++){
+        obj = obj[indexes[i].value];
+      }
+      obj[indexes[indexes.length-1].value] = value;      
+      return value;
+    }
+  }
+
+};
+```
+
+Set sirve para asignar a las propiedades de un objeto un valor concreto, por lo que se diferencian tres partes:
+
+1.  El objeto en sí : **obj**
+2.  Sus propiedades : **indexes**
+3.  El valor        : **value**
+
+El primer bucle se encarga de encontrar el scope del objeto que queremos modificar y el funcionamiento del bucle interno es parecido al de element a diferencia de que no iteramos hasta el último elemento sino hasta el penúltimo para igualar este último elemento ( que es el objetivo ) al valor deseado.
+
+
+
+### fun ( y this )
+
+```javascript
+specialForms['->'] =specialForms['fun'] = function(args, env) {
+  if (!args.length) {
+    throw new SyntaxError('Functions need a body.')
+  }
+
+  function name(expr){
+    if (!expr.type === 'Word'){
+      throw new SyntaxError('Arg names must be words');
+    }
+
+    return expr.value;
+  }
+
+  let argNames = args.slice(0, args.length - 1).map(name);
+  let body = args[args.length - 1];
+  
+  return function() {
+    if ((arguments.length - 1) != argNames.length) {
+      throw new TypeError('Wrong number of arguments');
+    }
+
+    let localEnv = Object.create(env);
+    for (let i = 0; i < arguments.length - 1; i++) {
+      localEnv[argNames[i]] = arguments[i + 1];
+    }
+    
+    localEnv["this"] = arguments[0];
+    
+    return body.evaluate(localEnv);
+  };
+};
+```
+
+Se encarga de definir una función, se utiliza en el caso de los procedures. He añadido una modificación para el uso del this, y es que a cada función definida debe de pasársele como primer argumento el "this", es decir, el objeto sobre el que se ejecuta, de modo que en su local environment se define el "this" como ese objeto.
+
+
+
+### call ( y this )
+
+```javascript
+specialForms['call'] = function(args, env){
+  
+  let this_value = null;
+  if(args[0].hasOwnProperty('operator') && args[0].operator.value === 'element'){
+     this_value = env[args[0].args[0].value];
+  }
+  
+  var calling_object = args[0].evaluate(env);
+  var function_args = args.slice(1,args.length).map(elem => elem.evaluate(env));
+  return calling_object(this_value, ...function_args);
+}
+```
+
+En la función call lo primero que se hace es comprobar si la función que se llama es una propiedad de un Object de PL/0, si este es el caso estaremos llamando a un atributo por ejemplo:
+
+```javascript
+  call obj.funcion()
+```
+
+en este caso lo que hacemos es definir el **this** que vamos a pasarle como primer argumento a la función como dicho objeto que la llama. En caso de que no sea una propiedad de un Object la función que se está llamando el this será igual a null.
+
+
+Esto implica que el uso del this está limitado al ámbito local de las funciones que llama el propio objeto.
+
+### object
+
+```javascript
+specialForms['object'] = function(args, env){
+
+ let object = new function(){};
+ for(let i = 0; i < args.length; i++){
+   const arg = args[i];
+   const arg_id = arg.args[0].value;
+   let arg_value = arg.args[1].evaluate(env); 
+   object[arg_id] = arg_value;
+ }
+ 
+
+ return object;
+}
+```
+
+El objeto se crea de una manera muy simple, en primer lugar se define el objeto y a continuación de manera iterativa se le van asignando las propiedades obteniendo el nombre y el valor.  
+Hay que tener en cuenta que las propiedades de los objetos solo pueden ser procedimientos o asignaciones por lo que siempre se va a tener en la variable **arg** durante cada iteración un apply de asignación ya sea de tipo "def" o de tipo ":=" cuyo primer argumento es la parte izquierda (identificador) de la asignación y cuyo segundo argumento es la parte derecha de la asignación. Es por eso que se distinguen asignandose a las variables **arg_id** y **arg_value**.
+
+### extends
+
+```javascript
+specialForms['extends'] = function(args, env){
+    
+  let parent_object = args[0].evaluate(env);
+  let child_object  = {...parent_object }
+
+  let object_properties = args.slice(1, args.length);
+  for(let i = 0; i < object_properties.length; i++){
+      obj_property = object_properties[i];
+      property_name = obj_property.args[0].value;
+      property_value = obj_property.args[1].evaluate(env);
+      child_object[property_name] = property_value;
+  }
+  
+  return child_object;
+  
+}
+```
+
+La manera de implementar herencia es simplemente obtener en primer lugar el objeto del que se desea heredar sus propiedades y copiarlas a un nuevo objeto que definimos como **child_object**. Una vez realizado esto el proceso es idéntico al realizado en la función **object**.
+
+Ejemplo *inheritance_declaration.pl* :
+
+```javascript
+obj := object
+        begin
+          a := 2;
+        end
+        ;
+obj2 := object extends obj
+        begin
+          x := 1;
+        end
+        ;
+  
+obj2.a := 1;
+
+print(obj);
+print(obj2);
+```
+
+
+
+
+
+
+
+
 
