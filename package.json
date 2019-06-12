@@ -1,0 +1,31 @@
+{
+  "name": "tfa-alu0101028163",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "example": "examples",
+    "lib": "lib",
+    "test": "test"
+  },
+  "dependencies": {
+    "chai": "^4.2.0",
+    "assert": "^2.0.0",
+    "should": "^13.2.3",
+    "sinon": "^7.3.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "mocha test/**/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ULL-ESIT-PL-1819/tfa-alu0101028163.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ULL-ESIT-PL-1819/tfa-alu0101028163/issues"
+  },
+  "homepage": "https://github.com/ULL-ESIT-PL-1819/tfa-alu0101028163#readme"
+}
