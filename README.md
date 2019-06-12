@@ -908,7 +908,7 @@ function parse_call_stmt(){
 }
 ```
 
-**Call** es un statement más complicado, en primer lugar quieres obtener el objeto que vas a llamar, que puede ser desde un procedure descrito en el bloque a uno definido como una propiedad de un objeto, de eso se encargará la regla **parse_object_access** que devolverá un identificador o múltiples. En caso de que se devuelvan múltiples identificadores el objeto al que se llama será obtenido por medio de un apply de tipo **element**.
+En el **Call** statement quieres en primer lugar obtener el objeto que vas a llamar, que puede ser desde un procedure descrito en el bloque a uno definido como una propiedad de un objeto, de parser el identificador y sus propiedades se encargará la regla **parse_object_access** que devolverá un identificador o múltiples. En caso de que se devuelvan múltiples identificadores el objeto al que se llama será obtenido por medio de un apply de tipo **element**.
 
 Esto último sería por ejemplo el caso de *object_inside_access.pl* :
 
@@ -1211,5 +1211,4 @@ function parse_factor(){
 
 }
 ```
-
 
