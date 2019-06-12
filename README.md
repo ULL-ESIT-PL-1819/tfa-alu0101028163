@@ -1,5 +1,12 @@
 # Procesadores de lenguajes 2019: Trabajo de fin de asignatura
 
+
+## Notas
+
+A pesar de estar basado el tfa en PL/0 al igual que la práctica 8, el código que se ha utilizado ha sido completamente reescrito desde cero desde otro enfoque y la gramática ha sido modificada.
+
+Todos los ejemplos utilizados a lo largo del informe se hayan en el directorio examples del proyecto.
+
 ## Gramática 
 
 La gramática a implementar está fundamentada en la del lenguaje de programación **PL/0** creada por **Niklaus Wirth** y ha sido modificada para adaptarse a un enfoque personal. La **gramática original** tiene la forma:
@@ -207,10 +214,9 @@ La regla **factor** cambia y se añaden tanto los arrays como el acceso a objeto
 program = block "."
 
  block =
-     {class}
      ["const" ident ":=" expression {"," ident ":=" expression} ";"]
      ["var" ident {"," ident} ";"]
-     {procedure} {statement}
+     { procedure } { statement }
 
  assignation =  object_access ":=" (object_declaration | expression) ";"
  call = "call" object_access "(" [expression (',' expression)*] ")" ";"
@@ -406,6 +412,804 @@ var create_token = function(type, value, lineno, offset){
     lineno: lineno,
     offset: offset
   }
+}
+```
+
+## Analizador sintáctico
+
+
+El parser posee como variables globales que se utilizan a lo largo del programa:
+
+```javascript
+var lookahead = null;   # Token actual que se está analizando
+let program = null;     # Cadena que contiene todo el programa
+var { tokenize_program, TOKENS, lex } = require("./lexer.js"); # Funciones del lexer.
+```
+
+Para empezar comentaremos las principales funciones que se ejecutan constantemente en el programa y que llamaremos **funciones auxiliares** porque se utilizan independientemente de la regla de producción para las tareas más triviales.
+
+### Funciones auxiliares
+##### assert_type & assert_value
+
+```javascript
+function assert_type(token_type){
+  if(!lookahead){
+    throw SyntaxError(`Expected token of type ${token_type} but got EOF`);
+  }else if(lookahead.type != token_type){
+    throw SyntaxError(`Expected token with type: ${token_type} but got ${lookahead.type} : ${lookahead.value} instead`);
+  }
+}
+
+function assert_value(token_value){
+  if(!lookahead){
+    throw SyntaxError(`Expected token ${token_value} but got EOF`);
+  }else if(lookahead.value != token_value){
+    throw SyntaxError(`Expected token : ${token_value} but got ${lookahead.value} instead`);
+  }
+}
+```
+
+Estas funciones como su nombre indica se encargan de comprobar que el valor o tipo del lookahead coincide con el esperado, no devuelven nada excepto un error en caso de haberlo.
+
+##### is_word & is_value
+
+```javascript
+function is_word(){
+  return lookahead.type === 'keyword'
+      || lookahead.type === 'identifier'
+      || lookahead.type === 'comparison_op'
+      || lookahead.type === 'assign_op'
+      || lookahead.type === 'add_sub_op'
+      || lookahead.type === 'mult_div_op'
+}
+
+function is_value(){
+  return lookahead.type === 'string'
+      || lookahead.type === 'number'
+}
+```
+
+Nuestro objetivo es construir un **abstract syntax tree** que pueda ser reconocido por la **egg virtual machine**, necesitamos para ello realizar una pequeña conversión y clasificar nuestros tokens como tipo **value** o tipo **word**. Estas funciones nos permiten saber si nuestros tokens son de tipo word o de tipo value.
+
+##### shift
+
+```javascript
+function shift(){
+  old_lookahead = lookahead;
+  lookahead = lex(program);
+  return old_lookahead;
+}
+```
+
+Esta función devuelve el lookahead actual y automáticamente actualiza el lookahead requiriéndole al lexer del siguiente token.
+
+##### get_token & get_token_of_type
+
+```javascript
+function get_token(token_value, token_type){
+  assert_type(token_type);
+  assert_value(token_value);
+  if(is_word()){
+    lookahead.type = 'word';
+  }else if(is_value()){
+    lookahead.type = 'value';
+  }
+  return shift();
+}
+
+function get_token_of_type(token_type){
+  assert_type(token_type);
+  if(is_word()){
+    lookahead.type = 'word';
+  }else if(is_value()){
+    lookahead.type = 'value';
+  }
+  return shift();
+}
+```
+
+Ambas funciones son similares, la diferencia está en que a la primera no solo se le pasa el tipo de token que se desea obtener sino también el valor exacto que este debe tener, es utilizada para obtener keywords concretas.
+
+
+##### make_word
+
+```javascript
+function make_word(token){
+  return {
+          type: "word",
+          value: token
+        };
+}
+```
+
+Devuelven un objeto que corresponde a un token de tipo _word_.
+
+##### egg_apply
+
+```javascript
+function egg_apply(operator, ...args){
+  if(typeof(operator) != 'object'){
+    operator = make_word(operator);
+  }
+  return {
+    type: "apply",
+    operator: operator,
+    args: args,
+  }
+}
+```
+
+Crea un objeto apply y como este siempre necesita que su operador sea una word se encarga de convertir cualquier token que no lo sea primero.
+
+
+##### initialize
+
+```javascript
+function initialize(){
+  lexer.initialize();
+  lookahead = lex(program);
+}
+```
+La función initialize inicializa el lexer, es decir, asigna sus variables globales a los valores iniciales para el análisis léxico y carga el primer token en la variable lookahead.
+
+
+##### parse
+
+```javascript
+function parse(file_path){
+  try {
+    program = fs.readFileSync(file_path, 'utf8');
+  }
+  catch (err) {
+    console.log(err);
+    throw err;
+  }
+  initialize();
+  var output = parse_program();
+  output = json2AST.json2AST(output);
+  return output;
+}
+```
+
+Esta función constituye el punto de arranque del programa, lee la ruta del programa .pl que se desea parsear, si no hay problema se inicializa el parser y se parsea el programa. Por último se retorna el ast que se obtiene tras ser transformado de formato JSON a objetos javascript.
+
+### Reglas de producción
+
+Todas las reglas de producción devuelven un objeto de tipo **apply** que es un objeto que puede ser evaluado por la **egg virtual machine**, estos objetos se van englobando unos dentro de otros hasta que finalmente tenemos un único objecto apply a evaluar.
+
+##### parse_program
+
+```javascript
+function parse_program(){
+  const block = parse_block();
+  if(lookahead){
+    throw SyntaxError(`Expected EOF but got ${lookahead.value} instead`);
+  }
+  return block;
+}
+```
+El final del programa lo marca un lookahead que debe de ser null.
+
+##### parse_block
+
+```javascript
+function parse_block(){
+  
+  const constants = parse_constants();
+  const variables = parse_variables();
+
+  const procedures = [];
+  let procedure;
+
+  while(lookahead && (procedure = parse_procedure())){
+    procedures.push(procedure);
+  }
+
+  const statements = [];
+  let statement;
+
+  while(lookahead && (statement = parse_statement())){
+    statements.push(statement);
+  }
+
+  block_statements = []
+  if(constants)  block_statements.push(...constants);
+  if(variables)  block_statements.push(...variables);
+  if(procedures) block_statements.push(...procedures);
+  if(statements) block_statements.push(...statements);
+
+  return egg_apply("do", ...block_statements);
+
+}
+```
+
+##### parse_constants
+
+```javascript
+function parse_constants(){
+  if(lookahead && lookahead.value === 'const' && lookahead.type === 'keyword'){
+    get_token("const","keyword");
+    const constants = [];
+
+    let id = get_token_of_type('identifier');
+    get_token_of_type('assign_op');
+    let expr = parse_expression();
+    constants.push(egg_apply("def", id, expr));
+
+    while(lookahead && lookahead.type != 'semicolon'){
+      get_token_of_type('comma');
+      id = get_token_of_type('identifier');
+      get_token_of_type('assign_op');
+      expr = parse_expression();
+      constants.push(egg_apply("def", id, expr));
+    }
+    get_token_of_type('semicolon');
+
+    return constants;
+
+  }else return [];
+}
+```
+
+Ejemplo *simple_expression.pl* :
+
+```javascript
+const a := (3 + 3 + 2);
+```
+
+Como cada regla será visitada, retrocediéndose en caso de que no se obtenga el token esperado, lo primero que se hace es comprobar que el lookahead coincide con lo que se espera, en caso negativo se retorna un array vacío y en caso positivo se retorna en este caso un array que contiene apply's de definición.
+
+Esto significa que la eggvm interpretará dicho objeto como una definición de una variable con un valor determinado.
+
+##### parse_variables 
+
+```javascript
+function parse_variables(){
+  if(lookahead && lookahead.value === 'var' && lookahead.type === 'keyword'){
+    get_token("var","keyword");
+    const value = {type: "value", value: 0};
+    const identifiers = [];
+    let id = get_token_of_type('identifier');
+    identifiers.push(egg_apply("def", id, value));
+    while(lookahead && lookahead.type != 'semicolon'){
+      get_token_of_type('comma');
+      id = get_token_of_type('identifier');
+      identifiers.push(egg_apply("def", id, value));
+    }
+    get_token_of_type('semicolon');
+    return identifiers;
+  }else return [];
+}
+```
+
+Ejemplo *simple_declaration_2.pl* :
+
+```javascript
+var a;
+a := 1+(3*2);
+```
+
+Funciona de manera análoga a **parse_constants** con la diferencia de que las variables se asginan por defecto a cero.
+
+
+##### parse_procedure
+
+```javascript
+function parse_procedure(){
+  if(lookahead && lookahead.value === 'procedure' && lookahead.type === 'keyword'){
+    get_token("procedure","keyword");
+    const id = get_token_of_type('identifier'); # Identificador del procedure.
+    get_token_of_type("lpar");
+    const arguments = [];
+    let expression;
+    if(expression = parse_expression()){        # Obtención de los atributos.
+        arguments.push(expression);
+        while(lookahead && lookahead.type != 'rpar'){
+          get_token_of_type('comma');
+          expression = parse_expression();
+          arguments.push(expression);
+        }
+    }
+    get_token_of_type("rpar");
+    
+    get_token_of_type('semicolon');
+    get_token('begin','keyword');
+    const block = parse_block();                # Obtención del cuerpo de la función
+    get_token('end','keyword');
+    return egg_apply("def", id,
+            egg_apply("fun", ...arguments, 
+            egg_apply("do", ...block.args)));
+  }else return null;
+}
+```
+
+Ejemplo *procedure_declaration* :
+
+```javascript
+  var c;
+  procedure b();
+  begin
+    var a;
+    a := 2;
+    c := 4;
+  end
+  call b();
+```
+
+Los procedures son funciones y por lo tanto tienen un cuerpo que se ejecuta y disponen de la opción de recibir parámetros para su ejecución, pero además, durante su definición se les asigna un nombre que será el identificador por el cual será posible llamarlos.
+
+
+##### parse_statement
+
+```javascript
+function parse_statement(){
+  return !lookahead
+      || parse_assign_stmt()
+      || parse_call_stmt()
+      || parse_begin_stmt()
+      || parse_if_stmt()
+      || parse_while_stmt()
+      || parse_print_stmt()
+      || null
+}
+```
+
+La regla **parse_statement** sirve como switch de todos los posibles tipos de statement que tiene la gramática, nótese que entre las posibilidade están:
+
+* !lookahead : que simboliza el haber llegado al final del programa.
+* null       : al que se llega cuando ninguna de las otras reglas devuelve un apply.
+
+
+##### parse_print_stmt
+
+```javascript
+function parse_print_stmt(){
+  if(lookahead&& lookahead.value === 'print' && lookahead.type === 'keyword'){
+    get_token("print","keyword");
+    get_token_of_type("lpar");
+    const expression = parse_expression();
+    get_token_of_type("rpar");
+    get_token_of_type("semicolon");
+    return egg_apply("print", expression);
+  }
+}
+```
+
+Ejemplo *print_number.pl* :
+
+```javascript
+var a; 
+begin 
+  a := 20;
+  print(1+2+3);
+end
+```
+
+##### parse_while_stmt
+
+```javascript
+function parse_while_stmt(){
+  if(lookahead && lookahead.value === 'while' && lookahead.type === 'keyword'){
+    get_token('while','keyword');
+    const condition = parse_condition();
+    get_token("do", 'keyword');
+    const statement = parse_statement();
+    return egg_apply("while", condition, statement);
+  }
+}
+```
+
+Ejemplo *while_statement.pl* :
+
+```javascript
+procedure primes();
+begin
+  var arg;
+  begin
+    arg := 1; 
+    while arg < 3 do
+      begin
+      arg := arg + 1;
+      end
+  end
+end
+call primes();
+```
+
+##### parse_if_stmt
+
+```javascript
+function parse_if_stmt(){
+  if(lookahead && lookahead.value === 'if' && lookahead.type === 'keyword'){
+    get_token('if', 'keyword');
+    const condition = parse_condition();
+    get_token('then', 'keyword');
+    const statement = parse_statement();
+    return egg_apply("if", condition, statement);
+  }else return null;
+}
+```
+
+Ejemplo *if_statement_1.pl* :
+
+```javascript
+procedure primes();
+begin
+	var arg;
+	begin
+		if 2 < 3 then
+			arg := 2;
+	end
+end
+call primes();
+```
+
+##### parse_begin_stmt
+
+```javascript
+function parse_begin_stmt(){
+  if(lookahead && lookahead.value === 'begin' && lookahead.type === 'keyword'){
+    get_token('begin','keyword');
+    const statements = [];
+    let statement;
+    while(lookahead && lookahead.value != 'end'){
+      statement = parse_statement();
+      statements.push(statement);
+    }
+    get_token('end','keyword');
+    return egg_apply('do', ...statements);
+  }else return null;
+}
+```
+
+Ejemplo *begin_end_example.pl* :
+
+```javascript
+procedure primes();
+begin
+var arg;
+	arg := 2;
+	begin
+		arg := arg + 1;
+	end
+end
+call primes();
+```
+
+##### parse_call
+
+```javascript
+function parse_call_stmt(){
+  if(lookahead && lookahead.value === 'call' && lookahead.type === 'keyword'){
+    get_token('call','keyword');
+    
+    let object = parse_object_access(); //[]
+    if(object.length > 1){
+      object = egg_apply("element", ...object);
+    }else object = object[0];
+    
+    get_token_of_type('lpar');
+    const args = [];
+    let expr = La única peculiaridad está en el uso del this como objeto que llama 
+parse_expression();
+    if(expr){
+      args.push(expr);
+
+      while(lookahead && lookahead.type != 'rpar'){
+        get_token_of_type('comma');
+        expr = parse_expression();
+        args.push(expr);
+      }
+
+    }
+    get_token_of_type('rpar');
+    get_token_of_type("semicolon");
+    return egg_apply("call", object, ...args);
+  }else return null;
+}
+```
+
+**Call** es un statement más complicado, en primer lugar quieres obtener el objeto que vas a llamar, que puede ser desde un procedure descrito en el bloque a uno definido como una propiedad de un objeto, de eso se encargará la regla **parse_object_access** que devolverá un identificador o múltiples. En caso de que se devuelvan múltiples identificadores el objeto al que se llama será obtenido por medio de un apply de tipo **element**.
+
+Esto último sería por ejemplo el caso de *object_inside_access.pl* :
+
+```javascript
+obj := object
+        begin
+          a := 1;
+          procedure b();
+          begin
+            print(this.a);
+          end
+        end
+        ;  
+call obj.b();
+```
+
+El resto de la regla obtiene los parámetros que se le pasan al objeto que llama. Nótese que, aunque el objeto que llama no disponga de parámetros el uso de paréntesis es obligatorio.
+
+
+##### parse_assign_stmt
+
+```javascript
+function parse_assign_stmt(){
+  if(lookahead.type === 'identifier'){
+    const left_part = parse_object_access();
+    const operator = get_token_of_type('assign_op');
+    
+    let right_part = parse_object_declaration();
+    if(!right_part){
+      right_part = parse_expression();
+    }
+    
+    get_token_of_type('semicolon');
+
+    if(left_part.length > 1){ // Set.
+      return egg_apply("set", ...left_part, right_part);
+    }else return egg_apply(":=", ...left_part, right_part);
+
+  }else return null;
+}
+```
+
+En esta regla queremos diferenciar dos casos posibles, dependiendo de la parte izquierda de la asignación. Respecto a la parte izquierda, sabiendo que **parse_object_access** devuelve un array de longitud uno ( si es un único identificador ) o más si es un acceso a un objeto / array , el resultado final a devolver será una asignación **:=** en el primer caso o un apply de tipo **set** en el segundo ( que funciona de manera similar a una asignación solo que debe ir recorriendo cada una de las dimensiones o propiedades hasta llegar a la deseada ).
+
+Ejemplo **array_access.pl** :
+
+```javascript
+var a;
+a := [1+5*7,[1,2], 1];
+a[0] := 1;
+print(a);
+```
+
+en el caso de a[0] estaríamos hablando de una asignación por medio de set, ya que accedemos al elemento con índice cero del array.
+
+La parte derecha de la asignación puede ser una expresión lo cual implica una operación aritmética, un array o un acceso a un objeto o puede ser la declaración de un objeto por medio de la regla **parse_object_declaration**.
+
+
+##### parse_object_declaration
+
+```javascript
+
+function parse_object_declaration(){
+  if(lookahead && lookahead.value === 'object' && lookahead.type === 'keyword'){
+    get_token("object","keyword");    
+    
+    let object_apply = null;
+    if (lookahead.value === 'extends'){
+      get_token("extends","keyword");
+      const parent_object = get_token_of_type('identifier');
+      object_apply = egg_apply("extends", parent_object);
+    }
+    
+    get_token("begin", "keyword");
+    const attributes = [];
+    while(lookahead && lookahead.value != 'end'){
+      let attribute = parse_procedure();
+      if(attribute){
+        attributes.push(attribute);
+      }else{
+        attribute = parse_assign_stmt();
+        attributes.push(attribute);
+      }
+    }
+    get_token("end", "keyword");
+    
+    if(object_apply){
+      object_apply.args.push(...attributes);
+      return object_apply;
+    }else return egg_apply("object", ...attributes);
+  }else return null;
+}
+
+```
+
+
+La declaración de un objeto comienza siempre con la palabra clave **object** y puede ir seguida de **extends** en caso de que este objeto derive de otro, si este es el caso el apply es distinto aunque recibe los mismos argumentos.
+
+Las propiedades del objeto estarán englobadas dentro de las palabras clave _begin_ y _end_.
+
+##### parse_object_access
+
+```javascript
+function parse_object_access(){
+  if(lookahead && lookahead.type === 'identifier' || lookahead.value === 'this'){
+    
+    const elements = [];
+    
+    if(lookahead.value === 'this'){
+      const this_token = get_token("this","keyword");
+      get_token_of_type("dot");
+      elements.push(this_token);
+    }
+    
+    const id = get_token_of_type('identifier');
+    
+    if(elements.length > 0){ // Hay un this.
+      id.type = 'value';
+    }
+    
+    elements.push(id);
+    while(lookahead && lookahead.type === 'lbrack' || lookahead.type === 'dot'){
+      
+      if(lookahead.type === 'dot'){
+        get_token_of_type('dot');
+        const element = get_token_of_type('identifier');
+        element.type = 'value';
+        elements.push(element);
+      }else {
+        get_token_of_type('lbrack');
+        const element = parse_expression();
+        elements.push(element);
+        get_token_of_type('rbrack');  
+      }
+    }
+  
+    return elements;
+  }else return null;
+}
+```
+
+El acceso a propiedades de objetos se ve caracterizado por el uso del token **dot** que no es más que azúcar sintáctico para su equivalente, los **brackets**, de modo que ambos se utilizan intercambiablemente aunque se parsean de modos distintos.
+
+Asumimos que el primer objeto que precede a todos los demás seguidos de punto es el objeto que llama a las propiedades, sabiendo esto, está la peculiaridad del uso del **this** que puede ser el objeto que llama.
+
+Nótese que esta regla no devuelve un apply sino un array que contiene el objeto al que se accede y sus propiedades ( si las tiene ) es en reglas superiores donde se evalúa que realizar con los valores que retorna.
+
+Ejemplo *object_inside_access_2.pl* :
+
+```javascript
+obj := object
+        begin
+          a := 1;
+          c := 2;
+          procedure b();
+          begin
+            print(this.a + this.c);
+          end
+        end
+        ;
+
+  
+call obj.b();
+```
+
+##### parse_array
+
+```javascript
+function parse_array(){
+  if(lookahead && lookahead.type === 'lbrack'){
+    get_token_of_type('lbrack');
+    const array_values = [];
+    let array_value;
+    while(lookahead && lookahead.type != 'rbrack'){
+      array_value = parse_expression();
+      array_values.push(array_value);
+      if(lookahead.type != 'comma')
+        break;
+      else get_token_of_type('comma');
+    }
+    get_token_of_type('rbrack');
+    return egg_apply("array", ...array_values);
+  }else return null;
+}
+```
+
+El lenguaje soporta ahora el uso de arrays que no es más que un apply cuyos argumentos son una lista de expresiones, lo cual significa que se permite el uso de arrays multidimensionales.
+
+Ejemplo *array_access.pl* :
+
+```javascript
+var a;
+a := [1+5*7,[1,2], 1];
+a[0] := 1;
+print(a);
+```
+
+##### parse_condition
+
+```javascript
+function parse_condition(){
+   const expression1 = parse_expression();
+   const operator = get_token_of_type('comparison_op');
+   const expression2 = parse_expression();
+   return egg_apply(operator, expression1, expression2);
+}
+```
+
+Por ejemplo:
+
+```javascript
+		2 < 3 
+```
+
+```javascript
+		a < 3 
+```
+
+```javascript
+		a <= b 
+```
+
+##### parse_expression
+
+```javascript
+function parse_expression(){
+  let term1 = parse_term();
+  while(lookahead && lookahead.type === 'add_sub_op'){
+    const operator = get_token_of_type('add_sub_op');
+    const term2 = parse_term();
+    term1 = egg_apply(operator, term1, term2);
+  }
+  return term1;
+}
+```
+
+Por ejemplo:
+
+```javascript
+  2 + 3 + 4
+```
+```javascript
+  a - b + 4
+```
+
+##### parse_term
+
+```javascript
+function parse_term(){
+  let factor1 = parse_factor();
+
+  while(lookahead && lookahead.type === 'mult_div_op'){
+    const operator = get_token_of_type('mult_div_op');
+    const factor2 = parse_factor();
+    factor1 = egg_apply(operator, factor1, factor2);
+  }
+  return factor1;
+}
+```
+
+Por ejemplo:
+
+```javascript
+  3 * 4
+```
+
+```javascript
+  a * 4
+```
+
+
+##### parse_factor
+
+```javascript
+function parse_factor(){
+  if(lookahead && lookahead.type === 'number'){
+    return get_token_of_type('number');
+  }
+
+  if(lookahead && lookahead.type === 'identifier' || lookahead.value === 'this'){
+    const elements = parse_object_access();
+    if(elements.length > 1){
+      return egg_apply("element", ...elements);
+    }else return elements[0];
+  }
+
+  if(lookahead && lookahead.type === 'lpar'){
+    get_token_of_type('lpar');
+    const expression = parse_expression();
+    get_token_of_type('rpar');
+    return expression;
+  }
+  
+  if(lookahead && lookahead.type === 'lbrack'){
+    const array = parse_array();
+    return array;
+  }
+
+  return null;
+
 }
 ```
 
