@@ -116,6 +116,13 @@ describe("EXAMPLES", function(){
     chai.expect(console.log.calledWith(1)).to.be.true;
   })
   
+  it("object_inside_access_2", function(){
+    var r = parser.parse("examples/object_inside_access_2.pl");
+    var x = r.evaluate(registry.topEnv);
+    x.should.be.eql(3);
+    chai.expect(console.log.calledWith(3)).to.be.true;
+  })
+  
   it("object_procedure_call", function(){
     var r = parser.parse("examples/object_procedure_call.pl");
     var x = r.evaluate(registry.topEnv);
@@ -128,6 +135,14 @@ describe("EXAMPLES", function(){
     var x = r.evaluate(registry.topEnv);
     x.should.be.eql(199);
     chai.expect(console.log.calledWith(199)).to.be.true;
+  })
+  
+  it("inheritance_declaration", function(){
+    var r = parser.parse("examples/inheritance_declaration.pl");
+    var x = r.evaluate(registry.topEnv);
+    x.should.be.eql({a: 1, x: 1});
+    chai.expect(console.log.calledWith({a: 2})).to.be.true;
+    chai.expect(console.log.calledWith({a: 1, x: 1})).to.be.true;
   })
 
 });
