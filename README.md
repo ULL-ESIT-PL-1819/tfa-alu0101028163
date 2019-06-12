@@ -1416,10 +1416,96 @@ print(obj2);
 ```
 
 
+## Estructura de ficheros
+
+```
+├── tfa-alu0101028163
+  ├── examples                    # Aquí se encuentran todos los ejemplos que han sido testeados y funcionan correctamente
+  ├── lib                         # Aquí se encuentra el código fuente, parte del código fuente, la eggvm concretamente ha sido copiada
+                                  # de prácticas anteriores por lo que hay ficheros que se han copiado también para evitar problemas de 
+                                  # compatibilidad pero que no se usan, aqui se especifican los utilizados.
+     ├── main.js                  # Fichero utilizado para comprobar ejemplo a ejemplo sus funcionamientos, los asts que se obtienen... etc.
+     ├── ast.js                   # Abstract Syntax Tree que reconoce eggvm.
+     ├── json2ast.js              # Fichero que convierte un ast en formato JSON a un ast reconocido por la eggvm.
+     ├── lexer.js                 # El analizador léxico
+     ├── parser.js                # El analizador sintáctico
+     ├── registry.js              # Las funciones de la eggvm
+    
+  ├── test                        # En este directorio se encuentran los tests realizados.
+```
+
+## Funcionamiento del programa
+
+Para comprobar el funcionamiento del programa se escribe un ejemplo en el directorio **examples** siguiendo la gramatica definida en este README y a continuación se sitúa la terminal en el directorio lib y se ejecuta el fichero **main.js** utilizando las opciones -t o -r, tal que, por ejemplo:
+
+```bash
+$ node main.js -t array_access.pl
+
+Apply {
+  operator: Word { value: 'do' },
+  args: [
+    Apply {
+      operator: Word { value: 'def' },
+      args: [ Word { value: 'a' }, Value { value: 0 } ]
+    },
+    Apply {
+      operator: Word { value: ':=' },
+      args: [
+        Word { value: 'a' },
+        Apply {
+          operator: Word { value: 'array' },
+          args: [
+            Apply {
+              operator: Word { value: '+' },
+              args: [
+                Value { value: 1 },
+                Apply {
+                  operator: Word { value: '*' },
+                  args: [ Value { value: 5 }, Value { value: 7 } ]
+                }
+              ]
+            },
+            Apply {
+              operator: Word { value: 'array' },
+              args: [ Value { value: 1 }, Value { value: 2 } ]
+            },
+            Value { value: 1 }
+          ]
+        }
+      ]
+    },
+    Apply {
+      operator: Word { value: 'set' },
+      args: [ Word { value: 'a' }, Value { value: 0 }, Value { value: 1 } ]
+    },
+    Apply {
+      operator: Word { value: 'print' },
+      args: [ Word { value: 'a' } ]
+    }
+  ]
+}
+```
+
+```bash
+$ node main.js -r array_access.pl
+
+[ 1, [ 1, 2 ], 1 ]
+[ 1, [ 1, 2 ], 1 ]
+```
+
+## Ejecución de los tests
+
+Para ejecutar los tests basta con situarse en el directorio raíz del proyecto y ejecutar en la terminal:
+
+```bash
+$ npm test
+
+> tfa-alu0101028163@1.0.0 test /home/aalvarez/Documents/UNIVERSITY/PL/tfa/tfa-alu0101028163
+> mocha test/**/*.js
 
 
+  ․․․․․․․․․․․․․․․․․․․․
 
+  20 passing (296ms)
 
-
-
-
+```
